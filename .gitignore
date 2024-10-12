@@ -13,3 +13,6 @@ logs/
 
 # Jupyter Notebook checkpoints (if any)
 .ipynb_checkpoints/
+
+# Data folder
+data/

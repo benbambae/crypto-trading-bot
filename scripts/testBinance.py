@@ -2,9 +2,13 @@ import ccxt
 import pandas as pd
 import time
 import yaml
+import os
 
-# Load config
-with open('config/config.yaml', 'r') as file:
+# Get the directory path of the project root
+config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'config', 'config.yaml')
+
+# Load the config.yaml file
+with open(config_path, 'r') as file:
     config = yaml.safe_load(file)
 
 # API setup using config data
