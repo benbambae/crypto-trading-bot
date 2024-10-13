@@ -16,3 +16,6 @@ logs/
 
 # Data folder
 data/
+
+#Hidden Mac Attribute Files
+.DS_Store
