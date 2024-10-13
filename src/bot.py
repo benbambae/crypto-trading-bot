@@ -1,8 +1,11 @@
+import logging
+import time
+import pandas as pd
 from binance.client import Client
+from strategies import moving_average, rsi, macd
 import yaml
 import os
-import pandas as pd
-from strategies import moving_average_strategy
+from datetime import datetime
 
 # Load config.yaml
 config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'config', 'config.yaml')
@@ -10,56 +13,92 @@ config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'config',
 with open(config_path, 'r') as file:
     config = yaml.safe_load(file)
 
-# Initialize Binance Client (Testnet)
+# Set up logging
+logging.basicConfig(filename=config['logging']['file'], level=logging.INFO, format='%(asctime)s %(message)s')
+
+# Initialize Binance client
 client = Client(config['binance']['test_api_key'], config['binance']['test_secret_key'])
-client.API_URL = 'https://testnet.binance.vision/api'
 
-# Fetch real market data using Binance API
-def get_market_data(client, symbol):
-    candles = client.get_klines(symbol=symbol, interval=Client.KLINE_INTERVAL_1HOUR)
-    # Create a DataFrame for the market data
-    df = pd.DataFrame(candles, columns=['open_time', 'open', 'high', 'low', 'close', 'volume', 'close_time', 'quote_asset_volume', 'number_of_trades', 'taker_buy_base_asset_volume', 'taker_buy_quote_asset_volume', 'ignore'])
-    df['close'] = df['close'].astype(float)
-    return df
+class TradingBot:
+    def __init__(self):
+        self.symbol = config['trading']['symbol']
+        self.capital = config['trading']['capital']
+        self.position = None
+        self.entry_price = None
+        self.strategy = config['strategies']['default_strategy']
+        self.max_risk = config.get('trading', {}).get('risk', 0.01)  # Optional risk management
 
-# Simulation bot: No actual trading on Binance
-def run_simulation_bot():
-    symbol = config['trading']['default_symbol']
-    virtual_balance = 1000000  # Start with a $1000 virtual balance
-    position = 0  # Number of units (BTC, ETH, etc.)
-    price_per_unit = 0  # Track the price at which a unit was bought
+    def fetch_data(self, limit=200):
+        """Fetch real-time price data from Binance."""
+        try:
+            klines = client.get_klines(symbol=self.symbol, interval=config['trading']['interval'], limit=limit)
+            data = pd.DataFrame(klines, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume',
+                                                 'close_time', 'quote_asset_volume', 'number_of_trades',
+                                                 'taker_buy_base_asset_volume', 'taker_buy_quote_asset_volume', 'ignore'])
+            data['close'] = pd.to_numeric(data['close'])
+            data['timestamp'] = pd.to_datetime(data['timestamp'], unit='ms')
+            return data
+        except Exception as e:
+            logging.error(f"Error fetching data: {e}")
+            return pd.DataFrame()
 
-    print("Simulation started with virtual balance of $1000.")
+    def apply_strategy(self, data):
+        """Apply the selected strategy to make trading decisions."""
+        if data.empty:
+            logging.warning("No data to apply strategy on")
+            return [], []
 
-    while True:
-        # Fetch real market data using Binance API (for simulation)
-        market_data = get_market_data(client, symbol)  # Fetch real-time data
-
-        # Execute strategy to decide whether to buy, sell, or hold
-        decision = moving_average_strategy(market_data)
-
-        # Simulate buy or sell order based on the decision
-        current_price = market_data['close'].iloc[-1]  # Get the latest closing price
-
-        if decision == 'buy':
-            amount_to_buy = virtual_balance / current_price  # Buy as much as balance allows
-            if amount_to_buy > 0:
-                position += amount_to_buy  # Buy fractional units
-                price_per_unit = current_price  # Record the price bought at
-                virtual_balance -= amount_to_buy * current_price  # Reduce virtual balance
-                print(f"Bought {amount_to_buy:.4f} units at {current_price}. Virtual balance: {virtual_balance}, Position: {position:.4f}")
-
-        elif decision == 'sell' and position > 0:
-            amount_to_sell = position  # Sell all holdings
-            position = 0  # Clear position
-            virtual_balance += amount_to_sell * current_price  # Add sale price to balance
-            profit_or_loss = (current_price - price_per_unit) * amount_to_sell  # Calculate P/L
-            print(f"Sold {amount_to_sell:.4f} units at {current_price}. Profit/Loss: {profit_or_loss}, Virtual balance: {virtual_balance}")
-
+        logging.info(f"Applying {self.strategy} strategy...")
+        if self.strategy == 'moving_average':
+            return moving_average(data)
+        elif self.strategy == 'rsi':
+            return rsi(data)
+        elif self.strategy == 'macd':
+            return macd(data)
         else:
-            print(f"Holding... Current Price: {current_price}, Virtual balance: {virtual_balance}, Position: {position:.4f}")
-        
-        # Add a short delay (e.g., use time.sleep()) to simulate real-time trading if necessary
+            raise ValueError(f"Unknown strategy: {self.strategy}")
 
-if __name__ == "__main__":
-    run_simulation_bot()
+    def execute_trade(self, buy_signals, sell_signals):
+        """Simulate executing a trade based on buy/sell signals."""
+        latest_buy_signal = buy_signals[-1] if buy_signals else None
+        latest_sell_signal = sell_signals[-1] if sell_signals else None
+
+        # Buy if we are not in a position
+        if latest_buy_signal and self.position is None:
+            self.position = 'long'
+            self.entry_price = latest_buy_signal
+            logging.info(f"BUY at {self.entry_price}")
+
+        # Sell if we are in a position
+        elif latest_sell_signal and self.position == 'long':
+            profit = (latest_sell_signal - self.entry_price) * (self.capital / self.entry_price)
+            self.capital += profit
+            self.position = None
+            self.entry_price = None
+            logging.info(f"SELL at {latest_sell_signal}, Profit: {profit:.2f}")
+
+        # Add risk management (e.g., stop-loss), only if there's a valid sell signal
+        if self.position == 'long' and latest_sell_signal is not None and (self.entry_price - latest_sell_signal) / self.entry_price > self.max_risk:
+            logging.info(f"Stop-loss triggered at {latest_sell_signal}")
+            profit = (latest_sell_signal - self.entry_price) * (self.capital / self.entry_price)
+            self.capital += profit
+            self.position = None
+            self.entry_price = None
+            logging.info(f"SELL at {latest_sell_signal}, Profit: {profit:.2f} due to stop-loss")
+
+
+    def run(self):
+        """Main loop to run the bot."""
+        while True:
+            data = self.fetch_data()
+            if not data.empty:
+                buy_signals, sell_signals = self.apply_strategy(data)
+                self.execute_trade(buy_signals, sell_signals)
+                logging.info(f"Current Capital: {self.capital}")
+            else:
+                logging.warning("No data fetched, skipping this cycle")
+            time.sleep(60)  # Run every minute
+
+if __name__ == '__main__':
+    bot = TradingBot()
+    bot.run()
