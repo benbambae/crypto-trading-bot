@@ -1,6 +1,24 @@
 document.addEventListener('DOMContentLoaded', function() {
     const runButton = document.getElementById('runBacktest');
+    const strategySelect = document.getElementById('strategySelect');
     const resultsDiv = document.getElementById('results');
+
+    // Populate strategy dropdown
+    const strategies = {
+        'moving_average': 'Moving Average',
+        'rsi': 'RSI',
+        'macd': 'MACD', 
+        'bollinger_bands': 'Bollinger Bands',
+        'hybrid_strategy': 'Hybrid Strategy',
+        'advanced_hybrid_strategy': 'Advanced Hybrid Strategy'
+    };
+
+    for (const [value, name] of Object.entries(strategies)) {
+        const option = document.createElement('option');
+        option.value = value;
+        option.textContent = name;
+        strategySelect.appendChild(option);
+    }
 
     runButton.addEventListener('click', () => {
         // Show loading state with spinner animation
@@ -10,12 +28,15 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
         `;
 
-        // Send POST request to backend
+        // Send POST request to backend with selected strategy
         fetch('/run-backtest', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
-            }
+            },
+            body: JSON.stringify({
+                strategy: strategySelect.value
+            })
         })
         .then(response => response.json())
         .then(data => {
@@ -26,6 +47,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     <div class="results-container">
                         <h3 class="results-title">Backtest Results</h3>
                         
+                        <div class="metric">
+                            <p><strong>Strategy:</strong>
+                                <span class="value">${strategies[strategySelect.value]}</span>
+                            </p>
+                        </div>
+
                         <div class="metric">
                             <p><strong>Initial Capital:</strong> 
                                 <span class="value">$${results.initial_capital.toFixed(2)}</span>
