@@ -1,17 +1,18 @@
 # Full
 FROM python:3.12-slim
 
-# Set working dir
+# Set working directory
 WORKDIR /app
 
-# Copy only requirements first for caching
+# Install system dependencies
+RUN apt-get update && apt-get install -y gcc libffi-dev libssl-dev && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements and install
 COPY requirements.txt .
+RUN pip install --upgrade pip && pip install -r requirements.txt
 
-# Install dependencies
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Copy rest of your code
+# Copy rest of your project
 COPY . .
 
-# Set entry command to run your bot
+# Default command (optional, you can override this when running)
 CMD ["python", "src/bot.py"]
