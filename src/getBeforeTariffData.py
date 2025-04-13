@@ -30,7 +30,7 @@ def get_ohlcv(symbol, interval="1h", start="08 Mar, 2025", end="09 Apr, 2025"):
     return df[['timestamp', 'open', 'high', 'low', 'close', 'volume']]
 
 # Coin list
-coins = ["ETHUSDT", "LINKUSDT", "MATICUSDT", "DOGEUSDT"]
+coins = ["ETHUSDT", "LINKUSDT", "ARBUSDT", "DOGEUSDT", "MATICUSDT"]
 
 # Fetch and save all
 for coin in coins:

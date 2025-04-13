@@ -531,6 +531,7 @@ def matic_consolidation_break_strategy(data):
             sell.append(None)
 
     return buy, sell
+
 def doge_tweet_spike_strategy(data):
     """Loosened spike trigger and RSI limit to allow more entries."""
     data['price_change'] = data['close'].pct_change()
