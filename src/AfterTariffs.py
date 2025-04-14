@@ -10,10 +10,10 @@ config_path = os.path.join(os.path.dirname(__file__), '..', 'config', 'config.ya
 with open(config_path, 'r') as f:
     config = yaml.safe_load(f)
 
-start_date = '2025-03-08'
-end_date = '2025-04-08'
+start_date = '2025-04-08'
+end_date = '2025-04-13'
 interval = '1h'
-output_dir = 'before_tarrifs'
+output_dir = 'afterTariff'
 os.makedirs(output_dir, exist_ok=True)
 
 client = Client(
@@ -22,34 +22,110 @@ client = Client(
 )
 
 # === Define Strategies ===
-def eth_queue_bounce_scalper(df):
-    df = df.copy()
-    df['ema20'] = df['close'].ewm(span=20, adjust=False).mean()
-    df['ema50'] = df['close'].ewm(span=50, adjust=False).mean()
-    df['vol_ma'] = df['volume'].rolling(10).mean()
+def eth_tariff_bollinger_reversion(data):
+    """
+    ETH: Bollinger Band reversion strategy — enters when price dips below lower band
+    and exits when it reverts to mean.
+    """
+    data['bb_mid'] = data['close'].rolling(window=20).mean()
+    data['bb_std'] = data['close'].rolling(window=20).std()
+    data['bb_upper'] = data['bb_mid'] + 2 * data['bb_std']
+    data['bb_lower'] = data['bb_mid'] - 2 * data['bb_std']
 
-    # RSI
-    delta = df['close'].diff()
-    gain = delta.where(delta > 0, 0).rolling(14).mean()
-    loss = -delta.where(delta < 0, 0).rolling(14).mean()
-    rs = gain / loss
-    df['rsi'] = 100 - (100 / (1 + rs))
+    buy, sell = [], []
+    in_position = False
 
-    buy, sell, in_position = [], [], False
+    for i in range(len(data)):
+        price = data['close'].iloc[i]
+        if i < 20:
+            buy.append(None)
+            sell.append(None)
+            continue
 
-    for i in range(len(df)):
-        vol_ok = df['volume'][i] > df['vol_ma'][i]
-        downtrend = df['close'][i] < df['ema50'][i]
-        rsi_trigger = df['rsi'][i] > 35 and df['rsi'][i-1] <= 35 if i > 0 else False
-
-        if not in_position and downtrend and rsi_trigger and vol_ok:
-            buy.append(df['close'][i])
+        if not in_position and price < data['bb_lower'].iloc[i]:
+            buy.append(price)
             sell.append(None)
             in_position = True
-        elif in_position and (df['rsi'][i] > 55 or df['close'][i] < df['ema20'][i]):
-            sell.append(df['close'][i])
+        elif in_position and price >= data['bb_mid'].iloc[i]:
+            sell.append(price)
             buy.append(None)
             in_position = False
+        else:
+            buy.append(None)
+            sell.append(None)
+    return buy, sell
+
+
+def link_tariff_ema_trend(data):
+    """
+    LINK: Trend-following strategy using EMA crossovers.
+    Buys when fast EMA crosses above slow EMA, exits on reverse.
+    """
+    data['ema_fast'] = data['close'].ewm(span=8).mean()
+    data['ema_slow'] = data['close'].ewm(span=21).mean()
+
+    buy, sell = [], []
+    in_position = False
+
+    for i in range(len(data)):
+        if i < 21:
+            buy.append(None)
+            sell.append(None)
+            continue
+
+        fast = data['ema_fast'].iloc[i]
+        slow = data['ema_slow'].iloc[i]
+
+        if not in_position and fast > slow and data['ema_fast'].iloc[i - 1] <= data['ema_slow'].iloc[i - 1]:
+            buy.append(data['close'].iloc[i])
+            sell.append(None)
+            in_position = True
+        elif in_position and fast < slow:
+            sell.append(data['close'].iloc[i])
+            buy.append(None)
+            in_position = False
+        else:
+            buy.append(None)
+            sell.append(None)
+    return buy, sell
+
+
+def arb_pullback_trend_strategy(data):
+    """
+    ARB Strategy v2: Trend pullback with volatility filter
+    """
+    data['ema20'] = data['close'].ewm(span=20).mean()
+    data['ema50'] = data['close'].ewm(span=50).mean()
+    data['volatility'] = data['close'].pct_change().rolling(5).std()
+
+    buy, sell = [], []
+    in_position = False
+    entry_price = 0
+
+    for i in range(len(data)):
+        if i < 50:
+            buy.append(None)
+            sell.append(None)
+            continue
+
+        in_trend = data['close'].iloc[i] > data['ema50'].iloc[i]
+        pullback = data['close'].iloc[i] < data['ema20'].iloc[i]
+        stable_vol = data['volatility'].iloc[i] < 0.03  # below 3% std dev
+
+        if not in_position and in_trend and pullback and stable_vol:
+            entry_price = data['close'].iloc[i]
+            buy.append(entry_price)
+            sell.append(None)
+            in_position = True
+        elif in_position:
+            price = data['close'].iloc[i]
+            if price >= entry_price * 1.04 or price <= entry_price * 0.975:
+                sell.append(price)
+                buy.append(None)
+                in_position = False
+            else:
+                buy.append(None)
+                sell.append(None)
         else:
             buy.append(None)
             sell.append(None)
@@ -57,90 +133,15 @@ def eth_queue_bounce_scalper(df):
     return buy, sell
 
 
-def link_queue_bounce_scalper(df):
-    df = df.copy()
-    df['ema20'] = df['close'].ewm(span=20, adjust=False).mean()
-    df['ema50'] = df['close'].ewm(span=50, adjust=False).mean()
-    df['vol_ma'] = df['volume'].rolling(10).mean()
-
-    delta = df['close'].diff()
-    gain = delta.where(delta > 0, 0).rolling(14).mean()
-    loss = -delta.where(delta < 0, 0).rolling(14).mean()
-    rs = gain / loss
-    df['rsi'] = 100 - (100 / (1 + rs))
-
+def doge_sentiment_defense(df):
+    df['momentum'] = df['close'].diff()
     buy, sell, in_position = [], [], False
-
     for i in range(len(df)):
-        vol_ok = df['volume'][i] > df['vol_ma'][i]
-        downtrend = df['close'][i] < df['ema50'][i]
-        rsi_trigger = df['rsi'][i] > 35 and df['rsi'][i-1] <= 35 if i > 0 else False
-
-        if not in_position and downtrend and rsi_trigger and vol_ok:
+        if not in_position and df['momentum'][i] > 0:
             buy.append(df['close'][i])
             sell.append(None)
             in_position = True
-        elif in_position and (df['rsi'][i] > 55 or df['close'][i] < df['ema20'][i]):
-            sell.append(df['close'][i])
-            buy.append(None)
-            in_position = False
-        else:
-            buy.append(None)
-            sell.append(None)
-
-    return buy, sell
-
-
-def arb_queue_bounce_scalper(df):
-    df = df.copy()
-    df['ema20'] = df['close'].ewm(span=20, adjust=False).mean()
-    df['ema50'] = df['close'].ewm(span=50, adjust=False).mean()
-    df['vol_ma'] = df['volume'].rolling(10).mean()
-
-    delta = df['close'].diff()
-    gain = delta.where(delta > 0, 0).rolling(14).mean()
-    loss = -delta.where(delta < 0, 0).rolling(14).mean()
-    rs = gain / loss
-    df['rsi'] = 100 - (100 / (1 + rs))
-
-    buy, sell, in_position = [], [], False
-
-    for i in range(len(df)):
-        vol_ok = df['volume'][i] > df['vol_ma'][i]
-        downtrend = df['close'][i] < df['ema50'][i]
-        rsi_trigger = df['rsi'][i] > 35 and df['rsi'][i-1] <= 35 if i > 0 else False
-
-        if not in_position and downtrend and rsi_trigger and vol_ok:
-            buy.append(df['close'][i])
-            sell.append(None)
-            in_position = True
-        elif in_position and (df['rsi'][i] > 55 or df['close'][i] < df['ema20'][i]):
-            sell.append(df['close'][i])
-            buy.append(None)
-            in_position = False
-        else:
-            buy.append(None)
-            sell.append(None)
-
-    return buy, sell
-
-
-def doge_flat_breakout(df):
-    df['ema20'] = df['close'].ewm(span=20).mean()
-    df['price_change'] = df['close'].pct_change()
-    df['vol_ma'] = df['volume'].rolling(10).mean()
-
-    buy, sell, in_position = [], [], False
-    for i in range(len(df)):
-        flat = abs(df['close'][i] - df['ema20'][i]) < df['close'][i] * 0.002
-        mini_break = df['price_change'][i] > 0.01
-        vol_ok = df['volume'][i] > df['vol_ma'][i]
-
-        if not in_position and flat and mini_break and vol_ok:
-            buy.append(df['close'][i])
-            sell.append(None)
-            in_position = True
-        elif in_position and df['price_change'][i] < -0.005:
+        elif in_position and df['momentum'][i] < 0:
             sell.append(df['close'][i])
             buy.append(None)
             in_position = False
@@ -206,7 +207,7 @@ def run_backtest(coin, strategy_fn):
     print(f"✅ Finished {coin}: Profit ${total_profit:.2f}, Win Rate {win_rate*100:.1f}%")
 
 # === Run All ===
-run_backtest("ETH", eth_queue_bounce_scalper)
-run_backtest("LINK", link_queue_bounce_scalper)
-run_backtest("ARB", arb_queue_bounce_scalper)
-run_backtest("DOGE", doge_flat_breakout)
+run_backtest("ETH", eth_tariff_bollinger_reversion)
+run_backtest("LINK", link_tariff_ema_trend)
+run_backtest("ARB", arb_pullback_trend_strategy)
+run_backtest("DOGE", doge_sentiment_defense)
