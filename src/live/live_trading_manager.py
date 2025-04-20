@@ -9,6 +9,7 @@ from eth_bot import run_eth_bot
 from link_bot import run_link_bot
 from matic_bot import run_matic_bot
 from doge_bot import run_doge_bot
+from arb_bot import run_arb_bot
 from bot_base import get_logger, load_config
 
 CONFIG_RELOAD_INTERVAL = 120
@@ -43,7 +44,8 @@ def start_bot(name):
                 'eth': run_eth_bot,
                 'link': run_link_bot,
                 'matic': run_matic_bot,
-                'doge': run_doge_bot
+                'doge': run_doge_bot,
+                'arb': run_arb_bot
             }[name](logger, stop_event)
         except Exception as e:
             logger.error(f"[{name.upper()} BOT CRASHED] {e}")

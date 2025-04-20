@@ -11,9 +11,9 @@ with open(config_path, 'r') as f:
     config = yaml.safe_load(f)
 
 start_date = '2025-04-08'
-end_date = '2025-04-13'
+end_date = '2025-04-20'
 interval = '1h'
-output_dir = 'afterTariff'
+output_dir = 'liveBackup'
 os.makedirs(output_dir, exist_ok=True)
 
 client = Client(
@@ -186,7 +186,7 @@ def run_backtest(coin, strategy_fn):
             in_position = False
 
     trades_df = pd.DataFrame(trades)
-    trades_df.to_csv(os.path.join(output_dir, f"{coin}_tariff_trades.csv"), index=False)
+    trades_df.to_csv(os.path.join(output_dir, f"{coin}_after_tariff_trades.csv"), index=False)
 
     if trades_df.empty:
         print(f"⚠️  No trades executed for {coin}. Skipping metrics.")
@@ -203,7 +203,7 @@ def run_backtest(coin, strategy_fn):
         "win_rate": round(win_rate, 2),
         "total_profit": round(total_profit, 2)
     }])
-    summary.to_csv(os.path.join(output_dir, f"{coin}_tariff_metrics.csv"), index=False)
+    summary.to_csv(os.path.join(output_dir, f"{coin}_after_tariff_metrics.csv"), index=False)
     print(f"✅ Finished {coin}: Profit ${total_profit:.2f}, Win Rate {win_rate*100:.1f}%")
 
 # === Run All ===

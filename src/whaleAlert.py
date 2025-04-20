@@ -15,12 +15,12 @@ BASE_URL = "https://api.whale-alert.io/v1/transactions"
 
 def get_whale_alerts():
     now = int(time.time())
-    start_time = now - 60  # last 60 seconds
+    start_time = now - 500  # last 60 seconds
 
     params = {
         'api_key': API_KEY,
         'start': start_time,
-        'min_value': 500000,  # minimum USD value to filter whales
+        'min_value': 10000,  # minimum USD value to filter whales
         'currency': 'usd',
     }
 
