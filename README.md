@@ -13,6 +13,8 @@ A comprehensive Python-based cryptocurrency trading bot that supports multiple t
 - **Whale Alert Integration**: Monitor large transactions
 - **Risk Management**: Built-in stop-loss and take-profit mechanisms
 - **Data Visualization**: Web-based dashboard for performance analysis
+- **Professional Logging**: Organized logging system with automatic categorization
+- **Docker Support**: Easy deployment with containerization
 
 ## Project Structure
 
@@ -21,12 +23,14 @@ bencryptobot/
 ├── crypto-trading-bot/          # Main trading bot application
 │   ├── src/                     # Source code
 │   ├── config/                  # Configuration files
-│   ├── logs/                    # Log files
 │   ├── visualisation/           # Web dashboard
 │   └── requirements.txt         # Python dependencies
 ├── cloud/                       # Cloud deployment version
-├── liveBackup/                  # Trading data backups
-└── README.md                    # This file
+├── logs/                        # Organized logging system
+├── utils/                       # Shared utilities and logging
+├── docs/                        # Documentation
+├── scripts/                     # Management tools
+└── examples/                    # Usage examples
 ```
 
 ## Quick Start
@@ -41,8 +45,8 @@ bencryptobot/
 
 1. **Clone the repository**
    ```bash
-   git clone <your-repo-url>
-   cd bencryptobot
+   git clone https://github.com/benbambae/crypto-trading-bot.git
+   cd crypto-trading-bot
    ```
 
 2. **Set up virtual environment**
@@ -59,8 +63,8 @@ bencryptobot/
 
 4. **Configure the bot**
    ```bash
-   cp config/config.example.yaml config/config.yaml
-   # Edit config/config.yaml with your API keys and settings
+   cp config.example.yaml config.yaml
+   # Edit config.yaml with your API keys and settings
    ```
 
 ### Configuration
@@ -90,24 +94,6 @@ Create a `config.yaml` file based on `config.example.yaml` and fill in your API 
    - Get from: https://whale-alert.io/
    - Required: `api_key`
 
-#### Configuration Example
-
-```yaml
-binance:
-  api_key: "YOUR_BINANCE_API_KEY_HERE"
-  secret_key: "YOUR_BINANCE_SECRET_KEY_HERE"
-  test_api_key: "YOUR_BINANCE_TESTNET_API_KEY_HERE"
-  test_secret_key: "YOUR_BINANCE_TESTNET_SECRET_KEY_HERE"
-
-alerts:
-  telegram:
-    enabled: true
-    token: "YOUR_TELEGRAM_BOT_TOKEN_HERE"
-    chat_id: "YOUR_TELEGRAM_CHAT_ID_HERE"
-
-# ... other configurations
-```
-
 ## Usage
 
 ### Backtesting
@@ -115,7 +101,7 @@ alerts:
 Run backtests to evaluate strategy performance:
 
 ```bash
-python src/fourCoinsBacktest2.py
+python crypto-trading-bot/src/fourCoinsBacktest2.py
 ```
 
 ### Live Trading
@@ -123,7 +109,7 @@ python src/fourCoinsBacktest2.py
 Start the live trading manager:
 
 ```bash
-python src/live/live_trading_manager.py
+python cloud/live_trading_manager.py
 ```
 
 ### Visualization Dashboard
@@ -131,15 +117,57 @@ python src/live/live_trading_manager.py
 Launch the web dashboard:
 
 ```bash
-cd visualisation
+cd crypto-trading-bot/visualisation
 python app.py
 ```
 
 Then open http://localhost:5000 in your browser.
 
-## Trading Strategies
+## AWS EC2 Deployment
 
-The bot includes multiple strategies for different cryptocurrencies:
+### Step 1: Launch EC2 Instance
+
+1. **Choose Instance Type**:
+   - Minimum: `t3.small` (2 vCPU, 2 GB RAM)
+   - Recommended: `t3.medium` (2 vCPU, 4 GB RAM) for better performance
+
+2. **Configure Instance**:
+   - AMI: Ubuntu Server 22.04 LTS
+   - Storage: 20 GB gp3 (General Purpose SSD)
+   - Security Group: Allow SSH (port 22) from your IP
+
+### Step 2: Install Dependencies
+
+```bash
+# Update system
+sudo apt update && sudo apt upgrade -y
+
+# Install Docker
+curl -fsSL https://get.docker.com -o get-docker.sh
+sudo sh get-docker.sh
+sudo usermod -aG docker ubuntu
+
+# Install Git
+sudo apt install git -y
+```
+
+### Step 3: Deploy with Docker
+
+```bash
+# Clone and configure
+git clone https://github.com/benbambae/crypto-trading-bot.git
+cd crypto-trading-bot/cloud
+
+# Configure your API keys
+cp ../config.example.yaml config.yaml
+nano config.yaml
+
+# Build and run
+docker build -t crypto-bot .
+docker run -d --name crypto-bot --restart=unless-stopped crypto-bot
+```
+
+## Trading Strategies
 
 ### ETH Strategies
 - `eth_hybrid_trend_sentiment`: Combines trend analysis with sentiment
@@ -166,6 +194,42 @@ The bot includes multiple strategies for different cryptocurrencies:
 - `doge_meme_momentum_strategy`: Meme momentum trading
 - `doge_sentiment_consolidation_strategy`: Sentiment consolidation
 
+## Professional Logging System
+
+The bot includes an organized logging system:
+
+```
+logs/
+├── live_trading/          # Live trading logs by coin
+├── backtesting/          # Backtesting results
+├── sentiment_analysis/   # Social media analysis
+└── system/              # System operations
+```
+
+### Log Management
+
+```bash
+# View log summary
+python scripts/log_manager.py --summary
+
+# Clean up old logs
+python scripts/log_manager.py --cleanup
+
+# Archive logs older than 30 days
+python scripts/log_manager.py --archive 30
+```
+
+## Telegram Bot Commands
+
+- `/start` - Initialize bot
+- `/menu` - Show main menu
+- `/start_all` - Start all enabled trading bots
+- `/stop_all` - Stop all trading bots
+- `/metrics` - View trading metrics
+- `/logs` - View recent logs
+- `/whale_alerts` - Toggle whale alerts
+- `/sentiment` - Check market sentiment
+
 ## Risk Management
 
 - **Stop Loss**: Configurable stop-loss percentages per bot
@@ -181,22 +245,11 @@ The bot includes multiple strategies for different cryptocurrencies:
 - **Permissions**: Use read-only keys where possible
 - **Testing**: Test with small amounts first
 
-## Docker Deployment
+## Documentation
 
-Build and run with Docker:
-
-```bash
-cd cloud
-docker build -t crypto-trading-bot .
-docker run -d --name trading-bot crypto-trading-bot
-```
-
-## Monitoring and Logging
-
-- **Telegram Alerts**: Real-time trade notifications
-- **Log Files**: Detailed logging in `logs/` directory
-- **Performance Metrics**: Track P&L, win rates, and drawdowns
-- **Web Dashboard**: Visual performance monitoring
+- `docs/LOGGING.md` - Complete logging system guide
+- `docs/LOGGING_MIGRATION.md` - Migration details
+- `examples/logging_example.py` - Usage examples
 
 ## Contributing
 
@@ -218,26 +271,12 @@ docker run -d --name trading-bot crypto-trading-bot
 
 The authors are not responsible for any financial losses incurred while using this software.
 
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
 ## Support
 
 For support and questions:
 - Create an issue on GitHub
 - Review the documentation
 - Check the logs for error messages
-
-## Changelog
-
-### v1.0.0
-- Initial release
-- Multi-cryptocurrency support
-- Backtesting engine
-- Live trading capabilities
-- Sentiment analysis integration
-- Web dashboard
 
 ---
 
