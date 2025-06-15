@@ -1,0 +1,14 @@
+
+--- DOGE Sentiment Backtest Summary ---
+Period: 2021-05-25 to 2021-09-14
+Initial Cash: $10000
+Final Value: $5904.64
+Total Return: $-4095.36
+Number of Trades: 1181
+  - Buys: 591
+  - Sells: 590
+Avg Sentiment at Buy: 56.2288
+Avg Sentiment at Sell: -34.0388
+Min Tweet Count Threshold: 100
+Positive Sentiment Threshold: 0.3
+Negative Sentiment Threshold: -0.3

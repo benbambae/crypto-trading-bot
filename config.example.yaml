@@ -1,0 +1,151 @@
+alerts:
+  telegram:
+    enabled: true
+    token: "YOUR_TELEGRAM_BOT_TOKEN_HERE"
+    chat_id: "YOUR_TELEGRAM_CHAT_ID_HERE"
+
+binance:
+  api_key: "YOUR_BINANCE_API_KEY_HERE"
+  secret_key: "YOUR_BINANCE_SECRET_KEY_HERE"
+  test_api_key: "YOUR_BINANCE_TESTNET_API_KEY_HERE"
+  test_secret_key: "YOUR_BINANCE_TESTNET_SECRET_KEY_HERE"
+  enable_rate_limit: true #this respects the request limit by Binance, prevent getting banned or blocked for exceeding allowed rate limit
+
+whaleAlert:
+  enabled: true
+  min_value_usd: 1000000
+  api_key: "YOUR_WHALEALERT_API_KEY_HERE"
+
+# Optional: Add any other settings you might want to configure
+trading:
+  interval: '1m'  # Time interval (e.g., 1 minute candles)
+  capital: 10000  # Initial capital for paper trading
+  risk: 0.01  # Risk percentage per trade (optional)
+
+# === Live Bot Settings ===
+eth_bot:
+  enabled: true
+  quantity: 0.05
+  tp_pct: 0.04        # 4% take profit
+  sl_pct: 0.03        # 3% stop loss
+  interval: '15m'
+  max_trades: 3
+  cooldown: 180
+
+link_bot:
+  enabled: true
+  quantity: 15
+  tp_pct: 0.05
+  sl_pct: 0.02
+  interval: '1h'
+  max_trades: 5
+  cooldown: 180
+
+matic_bot:
+  enabled: true
+  quantity: 30
+  tp_pct: 0.045
+  sl_pct: 0.025
+  interval: '1h'
+  max_trades: 4
+  cooldown: 180
+
+doge_bot:
+  enabled: true
+  quantity: 500
+  tp_pct: 0.06
+  sl_pct: 0.035
+  interval: '1h'
+  max_trades: 5
+  cooldown: 180
+
+backtest:
+  backtest_periods:
+
+    MATIC:
+      - strategy: matic_breakout_clean
+        timeframe: 1h
+        start_date: "2023-03-05"
+        end_date: "2023-05-29"
+
+      - strategy: matic_bull_trend
+        timeframe: 4h
+        start_date: "2021-01-01"
+        end_date: "2021-11-01"
+
+      - strategy: matic_consolidation_then_break
+        timeframe: 1d
+        start_date: "2024-02-24"
+        end_date: "2024-03-03"
+
+    ETH:
+      - strategy: eth_hybrid_trend_sentiment
+        timeframe: 1h
+        start_date: "2023-10-01"
+        end_date: "2024-03-01"
+      - strategy: eth_choppy_durability
+        timeframe: 4h
+        start_date: "2022-05-01"
+        end_date: "2022-12-01"
+      - strategy: eth_strong_bull_momentum
+        timeframe: 1d
+        start_date: "2021-07-01"
+        end_date: "2021-11-01"
+
+    LINK:
+      - strategy: link_mean_reversion
+        timeframe: 1h
+        start_date: "2023-06-01"
+        end_date: "2023-12-01"
+      - strategy: link_macd_downtrend_filter
+        timeframe: 4h
+        start_date: "2022-03-01"
+        end_date: "2022-09-01"
+      - strategy: link_cycle_momentum
+        timeframe: 1d
+        start_date: "2021-01-01"
+        end_date: "2021-05-01"
+
+    ARB:
+      - strategy: arb_breakout_clean
+        timeframe: 1h
+        start_date: "2023-03-01"
+        end_date: "2023-06-01"
+      - strategy: arb_bull_trend
+        timeframe: 4h
+        start_date: "2023-06-01"
+        end_date: "2024-01-30"
+      - strategy: arb_oversold_bounce
+        timeframe: 1h
+        start_date: "2024-02-01"
+        end_date: "2024-06-01"
+
+    DOGE:
+      - strategy: doge_tweet_spike_strategy
+        timeframe: 1h
+        start_date: "2023-10-01"
+        end_date: "2023-12-01"
+      - strategy: doge_meme_momentum_strategy
+        timeframe: 4h
+        start_date: "2021-04-01"
+        end_date: "2021-06-01"
+      - strategy: doge_sentiment_consolidation_strategy
+        timeframe: 1d
+        start_date: "2022-11-01"
+        end_date: "2023-02-01"
+
+
+# Twitter API settings
+twitter:
+  api_key: "YOUR_TWITTER_API_KEY_HERE"
+  api_secret_key: "YOUR_TWITTER_API_SECRET_KEY_HERE"
+  access_token: "YOUR_TWITTER_ACCESS_TOKEN_HERE"
+  access_token_secret: "YOUR_TWITTER_ACCESS_TOKEN_SECRET_HERE"
+  bearer_token: "YOUR_TWITTER_BEARER_TOKEN_HERE"
+
+
+# Reddit API settings
+reddit:
+  client_id: "YOUR_REDDIT_CLIENT_ID_HERE"
+  client_secret: "YOUR_REDDIT_CLIENT_SECRET_HERE"
+  user_agent: "tradingBot/1.0 by YOUR_USERNAME_HERE"

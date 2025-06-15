@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trading Strategy Backtest</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --secondary-color: #1e40af;
+            --background-color: #f8fafc;
+            --text-color: #1e293b;
+            --border-color: #e2e8f0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background: var(--background-color);
+            color: var(--text-color);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            color: var(--primary-color);
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .controls {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        .control-group {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            justify-content: center;
+        }
+
+        select, button {
+            padding: 10px 20px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            font-size: 1rem;
+        }
+
+        select {
+            min-width: 200px;
+            background: white;
+        }
+
+        button {
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        button:hover {
+            background: var(--secondary-color);
+        }
+
+        .results-container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .results-title {
+            text-align: center;
+            color: var(--primary-color);
+            margin-bottom: 30px;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .metric {
+            background: var(--background-color);
+            padding: 20px;
+            border-radius: 6px;
+            text-align: center;
+        }
+
+        .metric strong {
+            display: block;
+            font-size: 0.9rem;
+            color: var(--text-color);
+            opacity: 0.8;
+            margin-bottom: 5px;
+        }
+
+        .value {
+            font-size: 1.5rem;
+            color: var(--primary-color);
+            font-weight: 600;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+        }
+
+        .loading::after {
+            content: '';
+            display: inline-block;
+            width: 30px;
+            height: 30px;
+            border: 3px solid var(--border-color);
+            border-radius: 50%;
+            border-top-color: var(--primary-color);
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .error-message {
+            background: #fee2e2;
+            color: #dc2626;
+            padding: 20px;
+            border-radius: 6px;
+            text-align: center;
+            margin-top: 20px;
+        }
+        .chart-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            margin-top: 30px;
+            height: 500px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Trading Strategy Backtest</h1>
+            <p>Select a strategy and run backtests to evaluate performance</p>
+        </div>
+
+        <div class="controls">
+            <div class="control-group">
+                <select id="strategySelect">
+                    <option value="" disabled selected>Select Strategy</option>
+                </select>
+                <button id="runBacktest">Run Backtest</button>
+            </div>
+        </div>
+
+        <div id="results"></div>
+
+        <div id="chartContainer" class="chart-container">
+            <canvas id="performanceChart"></canvas>
+        </div>
+    </div>
+
+    <script>
+        let performanceChart = null;
+
+        function updateChart(chartData) {
+            if (performanceChart) {
+                performanceChart.destroy();
+            }
+
+            const ctx = document.getElementById('performanceChart').getContext('2d');
+            
+            // Prepare datasets
+            const timestamps = chartData.map(d => new Date(d.timestamp));
+            const prices = chartData.map(d => d.close);
+            const capitals = chartData.map(d => d.capital);
+
+            performanceChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: timestamps,
+                    datasets: [
+                        {
+                            label: 'Price',
+                            data: prices,
+                            borderColor: 'rgb(255, 99, 132)',
+                            backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                            yAxisID: 'price',
+                            fill: false,
+                            tension: 0.4,
+                            borderWidth: 2
+                        },
+                        {
+                            label: 'Portfolio Value',
+                            data: capitals,
+                            borderColor: 'rgb(75, 192, 192)',
+                            backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                            yAxisID: 'capital',
+                            fill: true,
+                            tension: 0.4,
+                            borderWidth: 2,
+                            pointRadius: 0,
+                            pointHoverRadius: 5,
+                            pointHitRadius: 10
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    },
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                unit: 'day',
+                                displayFormats: {
+                                    day: 'MMM d'
+                                }
+                            },
+                            title: {
+                                display: true,
+                                text: 'Date'
+                            }
+                        },
+                        price: {
+                            position: 'right',
+                            title: {
+                                display: true,
+                                text: 'Price ($)'
+                            },
+                            grid: {
+                                drawOnChartArea: false
+                            }
+                        },
+                        capital: {
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: 'Portfolio Value ($)'
+                            }
+                        }
+                    },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Trading Performance',
+                            font: {
+                                size: 16,
+                                weight: 'bold'
+                            }
+                        },
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.dataset.label;
+                                    const value = context.parsed.y;
+                                    return `${label}: $${value.toFixed(2)}`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const runButton = document.getElementById('runBacktest');
+            const strategySelect = document.getElementById('strategySelect');
+            const resultsDiv = document.getElementById('results');
+
+            // Populate strategy dropdown
+            const strategies = {
+                'moving_average': 'Moving Average',
+                'rsi': 'RSI',
+                'macd': 'MACD', 
+                'bollinger_bands': 'Bollinger Bands',
+                'hybrid_strategy': 'Hybrid Strategy',
+                'advanced_hybrid_strategy': 'Advanced Hybrid Strategy'
+            };
+
+            for (const [value, name] of Object.entries(strategies)) {
+                const option = document.createElement('option');
+                option.value = value;
+                option.textContent = name;
+                strategySelect.appendChild(option);
+            }
+
+            runButton.addEventListener('click', () => {
+                if (!strategySelect.value) {
+                    alert('Please select a strategy first');
+                    return;
+                }
+
+                resultsDiv.innerHTML = `
+                    <div class="loading">
+                        Running backtest...
+                    </div>
+                `;
+
+                fetch('/run-backtest', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        strategy: strategySelect.value
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const results = data.results;
+                        resultsDiv.innerHTML = `
+                            <div class="results-container">
+                                <h3 class="results-title">Backtest Results</h3>
+                                
+                                <div class="metrics-grid">
+                                    <div class="metric">
+                                        <strong>Strategy</strong>
+                                        <div class="value">${strategies[strategySelect.value]}</div>
+                                    </div>
+
+                                    <div class="metric">
+                                        <strong>Initial Capital</strong>
+                                        <div class="value">$${results.initial_capital.toFixed(2)}</div>
+                                    </div>
+
+                                    <div class="metric">
+                                        <strong>Final Capital</strong>
+                                        <div class="value">$${results.final_capital.toFixed(2)}</div>
+                                    </div>
+
+                                    <div class="metric">
+                                        <strong>Total Trades</strong>
+                                        <div class="value">${results.performance_metrics.total_trades}</div>
+                                    </div>
+
+                                    <div class="metric">
+                                        <strong>Profitable Trades</strong>
+                                        <div class="value">${results.performance_metrics.profitable_trades}</div>
+                                    </div>
+
+                                    <div class="metric">
+                                        <strong>Win Rate</strong>
+                                        <div class="value">${(results.performance_metrics.win_rate * 100).toFixed(2)}%</div>
+                                    </div>
+
+                                    <div class="metric">
+                                        <strong>Total Profit</strong>
+                                        <div class="value">$${results.performance_metrics.total_profit.toFixed(2)}</div>
+                                    </div>
+
+                                    <div class="metric">
+                                        <strong>Return</strong>
+                                        <div class="value">${results.performance_metrics.return_pct.toFixed(2)}%</div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+
+                        updateChart(data.results.chart_data);
+                    } else {
+                        resultsDiv.innerHTML = `
+                            <div class="error-message">
+                                <p>Error: ${data.error}</p>
+                            </div>
+                        `;
+                    }
+                })
+                .catch(error => {
+                    resultsDiv.innerHTML = `
+                        <div class="error-message">
+                            <p>Error: ${error.message}</p>
+                        </div>
+                    `;
+                });
+            });
+        });
+    </script>
+</body>
+</html>

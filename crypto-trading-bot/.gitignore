@@ -1,0 +1,23 @@
+# Virtual environment
+venv/
+
+# Config files containing sensitive data
+config/config.yaml
+
+# Python cache files
+__pycache__/
+*.pyc
+
+# Logs
+logs/
+
+# Jupyter Notebook checkpoints (if any)
+.ipynb_checkpoints/
+
+# Data folder
+data/
+
+#Hidden Mac Attribute Files
+.DS_Store
+
+misc/
